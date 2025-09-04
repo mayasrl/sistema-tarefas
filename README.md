@@ -1,16 +1,16 @@
 # Sistema de Controle de Tarefas
 
-Projeto final do curso da Globo - Sistema para gerenciar listas de tarefas.
+Sistema web para organizar tarefas em listas personalizadas
 
-## Sobre
-
-Este é um sistema web para organizar tarefas em listas personalizadas. Foi desenvolvido como projeto final do curso de desenvolvimento web.
+---
 
 ## Tecnologias
 
 - HTML5
 - CSS3
 - Bootstrap 5
+
+---
 
 ## Requisitos Atendidos
 
@@ -19,11 +19,7 @@ Este é um sistema web para organizar tarefas em listas personalizadas. Foi dese
 ✅ **Modelagem do banco:** Diagrama na pasta `assets/`  
 ✅ **Orientação a objetos:** Aplicada na estrutura das páginas  
 
-## Como usar
-
-1. Baixe os arquivos
-2. Abra `index.html` no navegador
-3. Navegue pelas páginas
+---
 
 ## Funcionalidades
 
@@ -32,6 +28,8 @@ Este é um sistema web para organizar tarefas em listas personalizadas. Foi dese
 - Criar e gerenciar listas de tarefas
 - Adicionar, editar e marcar tarefas como concluídas
 - Interface responsiva
+
+---
 
 ## Estrutura
 
@@ -50,6 +48,4 @@ projeto-final/
 ```
 
 ---
-
-Feito com 💛 por @mayasrl no curso Academia Globotech da Ada em parceria com a Globo
-
+<p align="center"> Desenvolvido durante o curso <strong>Academia Globotech</strong> da Ada em parceria com a Globo, com 💛 por <strong>@mayasrl</strong></p> 
