@@ -48,4 +48,5 @@ projeto-final/
 ```
 
 ---
+
 <p align="center"> Desenvolvido durante o curso <strong>Academia Globotech</strong> da Ada em parceria com a Globo, com 💛 por <strong>@mayasrl</strong></p> 
