@@ -13,11 +13,20 @@
 
 // Namespace para a página de cadastro
 SistemaTarefas.CadastroPage = {
+    // Flag para evitar inicialização duplicada
+    initialized: false,
+    
     /**
      * Inicializa a página de cadastro
      */
     init: function() {
-        console.log('Página de cadastro inicializada');
+        // Evita inicialização duplicada
+        if (this.initialized) {
+            console.log('Página de cadastro já inicializada');
+            return;
+        }
+        
+        console.log('Inicializando página de cadastro');
         
         // Redireciona se já estiver logado
         SistemaTarefas.auth.redirectIfAuthenticated();
@@ -26,10 +35,12 @@ SistemaTarefas.CadastroPage = {
         this.setupEventListeners();
         
         // Foca no campo de nome
-        const nameField = SistemaTarefas.dom.$('#nome, #name, input[name="nome"], input[name="name"]');
+        const nameField = SistemaTarefas.dom.$('#nome, #name');
         if (nameField) {
             nameField.focus();
         }
+        
+        this.initialized = true;
     },
     
     /**
@@ -45,34 +56,27 @@ SistemaTarefas.CadastroPage = {
             });
             
             // Validação em tempo real
-            SistemaTarefas.validation.setupRealTimeValidation(cadastroForm, SistemaTarefas.validation.registerForm);
+            SistemaTarefas.validation.setupRealTimeValidation(
+                cadastroForm, 
+                SistemaTarefas.validation.registerForm
+            );
         }
         
-        // Event listener para o link de login
-        const loginLink = SistemaTarefas.dom.$('a[href="index.html"], .login-link');
-        if (loginLink) {
-            SistemaTarefas.dom.on(loginLink, 'click', (e) => {
-                e.preventDefault();
-                window.location.href = SistemaTarefas.config.PAGES.LOGIN;
-            });
-        }
-        
-        // Event listener para mostrar/ocultar senha
-        const togglePasswordBtns = SistemaTarefas.dom.$$('.toggle-password');
-        togglePasswordBtns.forEach(btn => {
-            SistemaTarefas.dom.on(btn, 'click', this.togglePasswordVisibility);
-        });
-        
-        // Event listener para verificação de email em tempo real
-        const emailField = SistemaTarefas.dom.$('#email, input[type="email"]');
+        // Event listener para verificação de email
+        const emailField = SistemaTarefas.dom.$('#email');
         if (emailField) {
-            SistemaTarefas.dom.on(emailField, 'blur', () => {
-                this.checkEmailAvailability(emailField.value);
+            // Usa debounce para evitar muitas verificações
+            const debouncedCheck = SistemaTarefas.utils.debounce((email) => {
+                this.checkEmailAvailability(email);
+            }, 500);
+            
+            SistemaTarefas.dom.on(emailField, 'input', (e) => {
+                debouncedCheck(e.target.value);
             });
         }
         
-        // Event listener para confirmação de senha em tempo real
-        const confirmPasswordField = SistemaTarefas.dom.$('#confirmarSenha, #confirmPassword, input[name="confirmarSenha"]');
+        // Event listener para confirmação de senha
+        const confirmPasswordField = SistemaTarefas.dom.$('#confirmarSenha, #confirmPassword');
         if (confirmPasswordField) {
             SistemaTarefas.dom.on(confirmPasswordField, 'input', () => {
                 this.validatePasswordConfirmation();
@@ -88,10 +92,10 @@ SistemaTarefas.CadastroPage = {
      */
     setupFieldNavigation: function() {
         const fields = [
-            '#nome, #name, input[name="nome"], input[name="name"]',
-            '#email, input[type="email"]',
-            '#senha, #password, input[name="senha"], input[name="password"]',
-            '#confirmarSenha, #confirmPassword, input[name="confirmarSenha"]'
+            '#nome, #name',
+            '#email',
+            '#senha, #password',
+            '#confirmarSenha, #confirmPassword'
         ];
         
         fields.forEach((selector, index) => {
@@ -130,7 +134,7 @@ SistemaTarefas.CadastroPage = {
         // Obtém dados do formulário
         const formData = SistemaTarefas.dom.getFormData(form);
         
-        // Normaliza nomes dos campos (compatibilidade)
+        // Normaliza nomes dos campos
         const cadastroData = {
             name: formData.nome || formData.name,
             email: formData.email,
@@ -142,20 +146,20 @@ SistemaTarefas.CadastroPage = {
         const validation = SistemaTarefas.validation.registerForm(cadastroData);
         
         if (!validation.isValid) {
-            SistemaTarefas.validation.displayErrors(validation.errors);
+            SistemaTarefas.validation.displayErrors(validation.errors, '#cadastroForm, form');
             return;
         }
         
         // Limpa erros anteriores
-        SistemaTarefas.validation.clearErrors();
+        SistemaTarefas.validation.clearErrors('#cadastroForm, form');
         
         // Mostra loading no botão
         this.setButtonLoading(submitBtn, true);
         
-        // Simula delay de cadastro (em um sistema real seria uma requisição)
+        // Simula delay de cadastro
         setTimeout(() => {
             this.registerUser(cadastroData, submitBtn);
-        }, 1000);
+        }, 800);
     },
     
     /**
@@ -172,19 +176,25 @@ SistemaTarefas.CadastroPage = {
                 return;
             }
             
-            // Cria novo usuário
+            // Cria novo usuário com senha hasheada
             const newUser = {
                 id: SistemaTarefas.utils.generateId(),
                 name: cadastroData.name.trim(),
                 email: cadastroData.email.toLowerCase().trim(),
-                password: cadastroData.password, // Em um sistema real seria hash
+                password: cadastroData.password, // Mantém para compatibilidade
+                passwordHash: SistemaTarefas.utils.simpleHash(cadastroData.password),
                 createdAt: new Date().toISOString()
             };
             
             // Salva usuário
-            const users = this.getRegisteredUsers();
+            const users = SistemaTarefas.storage.getRegisteredUsers();
             users.push(newUser);
-            SistemaTarefas.storage.save('registered_users', users);
+            
+            if (!SistemaTarefas.storage.saveRegisteredUsers(users)) {
+                this.setButtonLoading(submitBtn, false);
+                SistemaTarefas.notification.error('Erro ao salvar usuário. Tente novamente.');
+                return;
+            }
             
             // Cadastro bem-sucedido
             SistemaTarefas.notification.success(`Cadastro realizado com sucesso! Bem-vindo(a), ${newUser.name}!`);
@@ -205,7 +215,7 @@ SistemaTarefas.CadastroPage = {
             // Redireciona para o dashboard
             setTimeout(() => {
                 window.location.href = SistemaTarefas.config.PAGES.HOME;
-            }, 2000);
+            }, 1500);
             
         } catch (error) {
             console.error('Erro no cadastro:', error);
@@ -220,20 +230,23 @@ SistemaTarefas.CadastroPage = {
      * @returns {boolean} True se já existe
      */
     isEmailTaken: function(email) {
-        const users = this.getRegisteredUsers();
-        return users.some(user => user.email.toLowerCase() === email.toLowerCase());
+        if (!email) return false;
+        const users = SistemaTarefas.storage.getRegisteredUsers();
+        return users.some(user => user.email.toLowerCase() === email.toLowerCase().trim());
     },
     
     /**
-     * Verifica disponibilidade do email
+     * Verifica disponibilidade do email com feedback visual
      * @param {string} email - Email a ser verificado
      */
     checkEmailAvailability: function(email) {
-        if (!email || !SistemaTarefas.validation.email(email).isValid) {
-            return;
-        }
+        if (!email) return;
         
-        const emailField = SistemaTarefas.dom.$('#email, input[type="email"]');
+        // Valida formato primeiro
+        const emailValidation = SistemaTarefas.validation.email(email);
+        if (!emailValidation.isValid) return;
+        
+        const emailField = SistemaTarefas.dom.$('#email');
         if (!emailField) return;
         
         // Remove indicadores anteriores
@@ -242,16 +255,21 @@ SistemaTarefas.CadastroPage = {
         if (this.isEmailTaken(email)) {
             // Email já existe
             SistemaTarefas.dom.addClass(emailField, 'is-invalid');
+            emailField.setAttribute('aria-invalid', 'true');
+            
             const errorElement = SistemaTarefas.dom.createElement('div', {
-                className: 'invalid-feedback'
+                className: 'invalid-feedback',
+                role: 'alert'
             }, 'Este email já está cadastrado');
             emailField.parentNode.appendChild(errorElement);
         } else {
             // Email disponível
             SistemaTarefas.dom.addClass(emailField, 'is-valid');
+            emailField.setAttribute('aria-invalid', 'false');
+            
             const successElement = SistemaTarefas.dom.createElement('div', {
                 className: 'valid-feedback'
-            }, 'Email disponível');
+            }, '✓ Email disponível');
             emailField.parentNode.appendChild(successElement);
         }
     },
@@ -261,8 +279,11 @@ SistemaTarefas.CadastroPage = {
      * @param {Element} emailField - Campo de email
      */
     removeEmailIndicators: function(emailField) {
+        if (!emailField) return;
+        
         SistemaTarefas.dom.removeClass(emailField, 'is-valid');
         SistemaTarefas.dom.removeClass(emailField, 'is-invalid');
+        emailField.removeAttribute('aria-invalid');
         
         const feedback = emailField.parentNode.querySelector('.valid-feedback, .invalid-feedback');
         if (feedback) {
@@ -274,8 +295,8 @@ SistemaTarefas.CadastroPage = {
      * Valida confirmação de senha em tempo real
      */
     validatePasswordConfirmation: function() {
-        const passwordField = SistemaTarefas.dom.$('#senha, #password, input[name="senha"], input[name="password"]');
-        const confirmPasswordField = SistemaTarefas.dom.$('#confirmarSenha, #confirmPassword, input[name="confirmarSenha"]');
+        const passwordField = SistemaTarefas.dom.$('#senha, #password');
+        const confirmPasswordField = SistemaTarefas.dom.$('#confirmarSenha, #confirmPassword');
         
         if (!passwordField || !confirmPasswordField) return;
         
@@ -285,64 +306,34 @@ SistemaTarefas.CadastroPage = {
         // Remove indicadores anteriores
         SistemaTarefas.dom.removeClass(confirmPasswordField, 'is-valid');
         SistemaTarefas.dom.removeClass(confirmPasswordField, 'is-invalid');
+        confirmPasswordField.removeAttribute('aria-invalid');
         
         const existingFeedback = confirmPasswordField.parentNode.querySelector('.valid-feedback, .invalid-feedback');
         if (existingFeedback) {
             existingFeedback.remove();
         }
         
+        // Só valida se o campo não estiver vazio
         if (confirmPassword.length > 0) {
             if (password === confirmPassword) {
                 // Senhas coincidem
                 SistemaTarefas.dom.addClass(confirmPasswordField, 'is-valid');
+                confirmPasswordField.setAttribute('aria-invalid', 'false');
+                
                 const successElement = SistemaTarefas.dom.createElement('div', {
                     className: 'valid-feedback'
-                }, 'Senhas coincidem');
+                }, '✓ Senhas coincidem');
                 confirmPasswordField.parentNode.appendChild(successElement);
             } else {
                 // Senhas não coincidem
                 SistemaTarefas.dom.addClass(confirmPasswordField, 'is-invalid');
+                confirmPasswordField.setAttribute('aria-invalid', 'true');
+                
                 const errorElement = SistemaTarefas.dom.createElement('div', {
-                    className: 'invalid-feedback'
-                }, 'Senhas não coincidem');
+                    className: 'invalid-feedback',
+                    role: 'alert'
+                }, 'As senhas não coincidem');
                 confirmPasswordField.parentNode.appendChild(errorElement);
-            }
-        }
-    },
-    
-    /**
-     * Obtém lista de usuários cadastrados
-     * @returns {Array} Lista de usuários
-     */
-    getRegisteredUsers: function() {
-        return SistemaTarefas.storage.get('registered_users', []);
-    },
-    
-    /**
-     * Alterna visibilidade da senha
-     * @param {Event} event - Evento de clique
-     */
-    togglePasswordVisibility: function(event) {
-        const toggleBtn = event.target;
-        const fieldName = toggleBtn.getAttribute('data-target');
-        let passwordField;
-        
-        if (fieldName) {
-            passwordField = SistemaTarefas.dom.$(`#${fieldName}`);
-        } else {
-            // Busca campo de senha próximo
-            passwordField = toggleBtn.parentNode.querySelector('input[type="password"], input[type="text"]');
-        }
-        
-        if (passwordField) {
-            if (passwordField.type === 'password') {
-                passwordField.type = 'text';
-                toggleBtn.textContent = '🙈';
-                toggleBtn.title = 'Ocultar senha';
-            } else {
-                passwordField.type = 'password';
-                toggleBtn.textContent = '👁️';
-                toggleBtn.title = 'Mostrar senha';
             }
         }
     },
@@ -357,58 +348,42 @@ SistemaTarefas.CadastroPage = {
         
         if (loading) {
             button.disabled = true;
-            button.originalText = button.textContent;
+            button.setAttribute('data-original-text', button.innerHTML);
             button.innerHTML = '<span class="loading"></span> Cadastrando...';
         } else {
             button.disabled = false;
-            button.textContent = button.originalText || 'Cadastrar';
+            const originalText = button.getAttribute('data-original-text');
+            button.innerHTML = originalText || 'Cadastrar';
+            button.removeAttribute('data-original-text');
         }
     },
     
     /**
-     * Inicializa dados padrão para um novo usuário
+     * Inicializa dados padrão para novo usuário
      * @param {string} userId - ID do usuário
      */
     initUserDefaultData: function(userId) {
-        // Cria lista padrão se não existir
+        // Garante que a lista padrão existe
         const lists = SistemaTarefas.storage.getLists();
         if (lists.length === 0) {
-            const defaultList = {
-                id: 'default',
+            SistemaTarefas.storage.addList({
                 name: 'Tarefas Gerais',
-                description: 'Lista padrão para suas tarefas',
-                createdAt: new Date().toISOString(),
-                isDefault: true,
-                userId: userId
-            };
-            SistemaTarefas.storage.saveLists([defaultList]);
+                description: 'Lista padrão para tarefas gerais'
+            });
         }
         
-        // Cria tarefa de boas-vindas
-        const welcomeTask = {
-            id: SistemaTarefas.utils.generateId(),
-            title: '🎉 Bem-vindo ao Sistema de Tarefas!',
-            description: 'Esta é sua primeira tarefa. Explore o sistema e organize suas atividades!',
-            status: SistemaTarefas.config.TASK_STATUS.PENDENTE,
-            priority: SistemaTarefas.config.TASK_PRIORITY.MEDIA,
-            listId: 'default',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            userId: userId
-        };
-        
-        SistemaTarefas.storage.addTask(welcomeTask);
+        console.log('Dados padrão inicializados para usuário:', userId);
     }
 };
 
 // Inicializa a página quando o DOM estiver carregado
 document.addEventListener('DOMContentLoaded', function() {
     // Verifica se estamos na página de cadastro
-    if (document.body.classList.contains('cadastro-page') || 
-        document.title.toLowerCase().includes('cadastro') ||
-        window.location.pathname.includes('cadastro.html')) {
-        
+    const isCadastroPage = document.body.classList.contains('cadastro-page') || 
+                           document.title.toLowerCase().includes('cadastro') ||
+                           window.location.pathname.includes('cadastro.html');
+    
+    if (isCadastroPage) {
         SistemaTarefas.CadastroPage.init();
     }
 });
-

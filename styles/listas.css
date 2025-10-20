@@ -1,0 +1,40 @@
+/**
+ * ESTILOS DA PÁGINA DE LISTAS
+ */
+
+body.listas-page {
+    background-color: #f8f9fa;
+    padding-bottom: 80px;
+}
+
+/* Itens de lista */
+.listas-page .list-item {
+    border-left: 4px solid #667eea;
+    margin-bottom: 15px;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.listas-page .list-item:hover {
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+    transform: translateX(5px);
+}
+
+/* Cards de listas */
+.listas-page .card {
+    height: 100%;
+}
+
+.listas-page .card-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* Footer específico da página de listas */
+.listas-page .wrapper-footer {
+    background: #343a40;
+}
+

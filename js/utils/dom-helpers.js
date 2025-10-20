@@ -20,7 +20,12 @@ SistemaTarefas.dom = {
      * @returns {Element|null} Elemento encontrado
      */
     $: function(selector, context = document) {
-        return context.querySelector(selector);
+        try {
+            return context.querySelector(selector);
+        } catch (error) {
+            console.error('Erro no seletor:', selector, error);
+            return null;
+        }
     },
     
     /**
@@ -30,7 +35,12 @@ SistemaTarefas.dom = {
      * @returns {NodeList} Lista de elementos encontrados
      */
     $$: function(selector, context = document) {
-        return context.querySelectorAll(selector);
+        try {
+            return context.querySelectorAll(selector);
+        } catch (error) {
+            console.error('Erro no seletor:', selector, error);
+            return [];
+        }
     },
     
     /**
@@ -41,31 +51,44 @@ SistemaTarefas.dom = {
      * @returns {Element} Elemento criado
      */
     createElement: function(tag, attributes = {}, content = '') {
-        const element = document.createElement(tag);
-        
-        // Define atributos
-        Object.keys(attributes).forEach(key => {
-            if (key === 'className') {
-                element.className = attributes[key];
-            } else if (key === 'innerHTML') {
-                element.innerHTML = attributes[key];
-            } else if (key === 'textContent') {
-                element.textContent = attributes[key];
-            } else {
-                element.setAttribute(key, attributes[key]);
+        try {
+            const element = document.createElement(tag);
+            
+            // Define atributos
+            Object.keys(attributes).forEach(key => {
+                if (key === 'className') {
+                    element.className = attributes[key];
+                } else if (key === 'innerHTML') {
+                    element.innerHTML = attributes[key];
+                } else if (key === 'textContent') {
+                    element.textContent = attributes[key];
+                } else if (key === 'style' && typeof attributes[key] === 'object') {
+                    Object.assign(element.style, attributes[key]);
+                } else {
+                    element.setAttribute(key, attributes[key]);
+                }
+            });
+            
+            // Define conteúdo
+            if (content) {
+                if (typeof content === 'string') {
+                    element.innerHTML = content;
+                } else if (content instanceof Element) {
+                    element.appendChild(content);
+                } else if (Array.isArray(content)) {
+                    content.forEach(child => {
+                        if (child instanceof Element) {
+                            element.appendChild(child);
+                        }
+                    });
+                }
             }
-        });
-        
-        // Define conteúdo
-        if (content) {
-            if (typeof content === 'string') {
-                element.innerHTML = content;
-            } else if (content instanceof Element) {
-                element.appendChild(content);
-            }
+            
+            return element;
+        } catch (error) {
+            console.error('Erro ao criar elemento:', error);
+            return document.createElement('div');
         }
-        
-        return element;
     },
     
     /**
@@ -73,9 +96,13 @@ SistemaTarefas.dom = {
      * @param {Element|string} element - Elemento ou seletor
      */
     remove: function(element) {
-        const el = typeof element === 'string' ? this.$(element) : element;
-        if (el && el.parentNode) {
-            el.parentNode.removeChild(el);
+        try {
+            const el = typeof element === 'string' ? this.$(element) : element;
+            if (el && el.parentNode) {
+                el.parentNode.removeChild(el);
+            }
+        } catch (error) {
+            console.error('Erro ao remover elemento:', error);
         }
     },
     
@@ -85,9 +112,13 @@ SistemaTarefas.dom = {
      * @param {string} className - Nome da classe
      */
     addClass: function(element, className) {
-        const el = typeof element === 'string' ? this.$(element) : element;
-        if (el) {
-            el.classList.add(className);
+        try {
+            const el = typeof element === 'string' ? this.$(element) : element;
+            if (el && className) {
+                el.classList.add(className);
+            }
+        } catch (error) {
+            console.error('Erro ao adicionar classe:', error);
         }
     },
     
@@ -97,9 +128,13 @@ SistemaTarefas.dom = {
      * @param {string} className - Nome da classe
      */
     removeClass: function(element, className) {
-        const el = typeof element === 'string' ? this.$(element) : element;
-        if (el) {
-            el.classList.remove(className);
+        try {
+            const el = typeof element === 'string' ? this.$(element) : element;
+            if (el && className) {
+                el.classList.remove(className);
+            }
+        } catch (error) {
+            console.error('Erro ao remover classe:', error);
         }
     },
     
@@ -110,9 +145,13 @@ SistemaTarefas.dom = {
      * @returns {boolean} True se a classe foi adicionada
      */
     toggleClass: function(element, className) {
-        const el = typeof element === 'string' ? this.$(element) : element;
-        if (el) {
-            return el.classList.toggle(className);
+        try {
+            const el = typeof element === 'string' ? this.$(element) : element;
+            if (el && className) {
+                return el.classList.toggle(className);
+            }
+        } catch (error) {
+            console.error('Erro ao alternar classe:', error);
         }
         return false;
     },
@@ -124,8 +163,13 @@ SistemaTarefas.dom = {
      * @returns {boolean} True se tem a classe
      */
     hasClass: function(element, className) {
-        const el = typeof element === 'string' ? this.$(element) : element;
-        return el ? el.classList.contains(className) : false;
+        try {
+            const el = typeof element === 'string' ? this.$(element) : element;
+            return el ? el.classList.contains(className) : false;
+        } catch (error) {
+            console.error('Erro ao verificar classe:', error);
+            return false;
+        }
     },
     
     /**
@@ -136,13 +180,17 @@ SistemaTarefas.dom = {
      * @returns {string|void} Valor do atributo se não fornecido valor
      */
     attr: function(element, attribute, value) {
-        const el = typeof element === 'string' ? this.$(element) : element;
-        if (!el) return;
-        
-        if (value !== undefined) {
-            el.setAttribute(attribute, value);
-        } else {
-            return el.getAttribute(attribute);
+        try {
+            const el = typeof element === 'string' ? this.$(element) : element;
+            if (!el) return;
+            
+            if (value !== undefined) {
+                el.setAttribute(attribute, value);
+            } else {
+                return el.getAttribute(attribute);
+            }
+        } catch (error) {
+            console.error('Erro ao manipular atributo:', error);
         }
     },
     
@@ -152,9 +200,13 @@ SistemaTarefas.dom = {
      * @param {string} attribute - Nome do atributo
      */
     removeAttr: function(element, attribute) {
-        const el = typeof element === 'string' ? this.$(element) : element;
-        if (el) {
-            el.removeAttribute(attribute);
+        try {
+            const el = typeof element === 'string' ? this.$(element) : element;
+            if (el && attribute) {
+                el.removeAttribute(attribute);
+            }
+        } catch (error) {
+            console.error('Erro ao remover atributo:', error);
         }
     },
     
@@ -165,13 +217,17 @@ SistemaTarefas.dom = {
      * @returns {string|void} HTML atual se não fornecido novo HTML
      */
     html: function(element, html) {
-        const el = typeof element === 'string' ? this.$(element) : element;
-        if (!el) return;
-        
-        if (html !== undefined) {
-            el.innerHTML = html;
-        } else {
-            return el.innerHTML;
+        try {
+            const el = typeof element === 'string' ? this.$(element) : element;
+            if (!el) return;
+            
+            if (html !== undefined) {
+                el.innerHTML = html;
+            } else {
+                return el.innerHTML;
+            }
+        } catch (error) {
+            console.error('Erro ao manipular HTML:', error);
         }
     },
     
@@ -182,13 +238,17 @@ SistemaTarefas.dom = {
      * @returns {string|void} Texto atual se não fornecido novo texto
      */
     text: function(element, text) {
-        const el = typeof element === 'string' ? this.$(element) : element;
-        if (!el) return;
-        
-        if (text !== undefined) {
-            el.textContent = text;
-        } else {
-            return el.textContent;
+        try {
+            const el = typeof element === 'string' ? this.$(element) : element;
+            if (!el) return;
+            
+            if (text !== undefined) {
+                el.textContent = text;
+            } else {
+                return el.textContent;
+            }
+        } catch (error) {
+            console.error('Erro ao manipular texto:', error);
         }
     },
     
@@ -199,27 +259,37 @@ SistemaTarefas.dom = {
      * @returns {string|void} Valor atual se não fornecido novo valor
      */
     val: function(element, value) {
-        const el = typeof element === 'string' ? this.$(element) : element;
-        if (!el) return;
-        
-        if (value !== undefined) {
-            el.value = value;
-        } else {
-            return el.value;
+        try {
+            const el = typeof element === 'string' ? this.$(element) : element;
+            if (!el) return;
+            
+            if (value !== undefined) {
+                el.value = value;
+            } else {
+                return el.value;
+            }
+        } catch (error) {
+            console.error('Erro ao manipular valor:', error);
         }
     },
     
     /**
-     * Adiciona um event listener a um elemento
+     * Adiciona um event listener a um elemento (evita duplicação)
      * @param {Element|string} element - Elemento ou seletor
      * @param {string} event - Nome do evento
      * @param {Function} handler - Função manipuladora
      * @param {boolean} useCapture - Usar captura (opcional)
      */
     on: function(element, event, handler, useCapture = false) {
-        const el = typeof element === 'string' ? this.$(element) : element;
-        if (el) {
-            el.addEventListener(event, handler, useCapture);
+        try {
+            const el = typeof element === 'string' ? this.$(element) : element;
+            if (el && typeof handler === 'function') {
+                // Remove listener anterior se existir (evita duplicação)
+                el.removeEventListener(event, handler, useCapture);
+                el.addEventListener(event, handler, useCapture);
+            }
+        } catch (error) {
+            console.error('Erro ao adicionar event listener:', error);
         }
     },
     
@@ -231,9 +301,13 @@ SistemaTarefas.dom = {
      * @param {boolean} useCapture - Usar captura (opcional)
      */
     off: function(element, event, handler, useCapture = false) {
-        const el = typeof element === 'string' ? this.$(element) : element;
-        if (el) {
-            el.removeEventListener(event, handler, useCapture);
+        try {
+            const el = typeof element === 'string' ? this.$(element) : element;
+            if (el && typeof handler === 'function') {
+                el.removeEventListener(event, handler, useCapture);
+            }
+        } catch (error) {
+            console.error('Erro ao remover event listener:', error);
         }
     },
     
@@ -245,15 +319,19 @@ SistemaTarefas.dom = {
      * @param {Function} handler - Função manipuladora
      */
     delegate: function(parent, selector, event, handler) {
-        const parentEl = typeof parent === 'string' ? this.$(parent) : parent;
-        if (!parentEl) return;
-        
-        parentEl.addEventListener(event, function(e) {
-            const target = e.target.closest(selector);
-            if (target && parentEl.contains(target)) {
-                handler.call(target, e);
-            }
-        });
+        try {
+            const parentEl = typeof parent === 'string' ? this.$(parent) : parent;
+            if (!parentEl || typeof handler !== 'function') return;
+            
+            parentEl.addEventListener(event, function(e) {
+                const target = e.target.closest(selector);
+                if (target && parentEl.contains(target)) {
+                    handler.call(target, e);
+                }
+            });
+        } catch (error) {
+            console.error('Erro ao adicionar event delegation:', error);
+        }
     },
     
     /**
@@ -261,9 +339,13 @@ SistemaTarefas.dom = {
      * @param {Element|string} element - Elemento ou seletor
      */
     show: function(element) {
-        const el = typeof element === 'string' ? this.$(element) : element;
-        if (el) {
-            el.style.display = '';
+        try {
+            const el = typeof element === 'string' ? this.$(element) : element;
+            if (el) {
+                el.style.display = '';
+            }
+        } catch (error) {
+            console.error('Erro ao mostrar elemento:', error);
         }
     },
     
@@ -272,9 +354,13 @@ SistemaTarefas.dom = {
      * @param {Element|string} element - Elemento ou seletor
      */
     hide: function(element) {
-        const el = typeof element === 'string' ? this.$(element) : element;
-        if (el) {
-            el.style.display = 'none';
+        try {
+            const el = typeof element === 'string' ? this.$(element) : element;
+            if (el) {
+                el.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Erro ao esconder elemento:', error);
         }
     },
     
@@ -283,13 +369,17 @@ SistemaTarefas.dom = {
      * @param {Element|string} element - Elemento ou seletor
      */
     toggle: function(element) {
-        const el = typeof element === 'string' ? this.$(element) : element;
-        if (el) {
-            if (el.style.display === 'none') {
-                this.show(el);
-            } else {
-                this.hide(el);
+        try {
+            const el = typeof element === 'string' ? this.$(element) : element;
+            if (el) {
+                if (el.style.display === 'none') {
+                    this.show(el);
+                } else {
+                    this.hide(el);
+                }
             }
+        } catch (error) {
+            console.error('Erro ao alternar visibilidade:', error);
         }
     },
     
@@ -299,26 +389,30 @@ SistemaTarefas.dom = {
      * @param {number} duration - Duração em ms
      */
     fadeIn: function(element, duration = 300) {
-        const el = typeof element === 'string' ? this.$(element) : element;
-        if (!el) return;
-        
-        el.style.opacity = '0';
-        el.style.display = '';
-        
-        const start = performance.now();
-        
-        const animate = (currentTime) => {
-            const elapsed = currentTime - start;
-            const progress = Math.min(elapsed / duration, 1);
+        try {
+            const el = typeof element === 'string' ? this.$(element) : element;
+            if (!el) return;
             
-            el.style.opacity = progress.toString();
+            el.style.opacity = '0';
+            el.style.display = '';
             
-            if (progress < 1) {
-                requestAnimationFrame(animate);
-            }
-        };
-        
-        requestAnimationFrame(animate);
+            const start = performance.now();
+            
+            const animate = (currentTime) => {
+                const elapsed = currentTime - start;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                el.style.opacity = progress.toString();
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                }
+            };
+            
+            requestAnimationFrame(animate);
+        } catch (error) {
+            console.error('Erro no fade in:', error);
+        }
     },
     
     /**
@@ -327,26 +421,30 @@ SistemaTarefas.dom = {
      * @param {number} duration - Duração em ms
      */
     fadeOut: function(element, duration = 300) {
-        const el = typeof element === 'string' ? this.$(element) : element;
-        if (!el) return;
-        
-        const start = performance.now();
-        const startOpacity = parseFloat(el.style.opacity) || 1;
-        
-        const animate = (currentTime) => {
-            const elapsed = currentTime - start;
-            const progress = Math.min(elapsed / duration, 1);
+        try {
+            const el = typeof element === 'string' ? this.$(element) : element;
+            if (!el) return;
             
-            el.style.opacity = (startOpacity * (1 - progress)).toString();
+            const start = performance.now();
+            const startOpacity = parseFloat(el.style.opacity) || 1;
             
-            if (progress >= 1) {
-                el.style.display = 'none';
-            } else {
-                requestAnimationFrame(animate);
-            }
-        };
-        
-        requestAnimationFrame(animate);
+            const animate = (currentTime) => {
+                const elapsed = currentTime - start;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                el.style.opacity = (startOpacity * (1 - progress)).toString();
+                
+                if (progress >= 1) {
+                    el.style.display = 'none';
+                } else {
+                    requestAnimationFrame(animate);
+                }
+            };
+            
+            requestAnimationFrame(animate);
+        } catch (error) {
+            console.error('Erro no fade out:', error);
+        }
     },
     
     /**
@@ -355,17 +453,22 @@ SistemaTarefas.dom = {
      * @returns {Object} Dados do formulário
      */
     getFormData: function(form) {
-        const formEl = typeof form === 'string' ? this.$(form) : form;
-        if (!formEl) return {};
-        
-        const formData = new FormData(formEl);
-        const data = {};
-        
-        for (let [key, value] of formData.entries()) {
-            data[key] = value;
+        try {
+            const formEl = typeof form === 'string' ? this.$(form) : form;
+            if (!formEl) return {};
+            
+            const formData = new FormData(formEl);
+            const data = {};
+            
+            for (let [key, value] of formData.entries()) {
+                data[key] = value;
+            }
+            
+            return data;
+        } catch (error) {
+            console.error('Erro ao obter dados do formulário:', error);
+            return {};
         }
-        
-        return data;
     },
     
     /**
@@ -374,19 +477,23 @@ SistemaTarefas.dom = {
      * @param {Object} data - Dados para preencher
      */
     setFormData: function(form, data) {
-        const formEl = typeof form === 'string' ? this.$(form) : form;
-        if (!formEl || !data) return;
-        
-        Object.keys(data).forEach(key => {
-            const field = formEl.querySelector(`[name="${key}"]`);
-            if (field) {
-                if (field.type === 'checkbox' || field.type === 'radio') {
-                    field.checked = data[key];
-                } else {
-                    field.value = data[key];
+        try {
+            const formEl = typeof form === 'string' ? this.$(form) : form;
+            if (!formEl || !data) return;
+            
+            Object.keys(data).forEach(key => {
+                const field = formEl.querySelector(`[name="${key}"]`);
+                if (field) {
+                    if (field.type === 'checkbox' || field.type === 'radio') {
+                        field.checked = Boolean(data[key]);
+                    } else {
+                        field.value = data[key] || '';
+                    }
                 }
-            }
-        });
+            });
+        } catch (error) {
+            console.error('Erro ao preencher formulário:', error);
+        }
     },
     
     /**
@@ -394,9 +501,21 @@ SistemaTarefas.dom = {
      * @param {Element|string} form - Formulário ou seletor
      */
     clearForm: function(form) {
-        const formEl = typeof form === 'string' ? this.$(form) : form;
-        if (formEl) {
-            formEl.reset();
+        try {
+            const formEl = typeof form === 'string' ? this.$(form) : form;
+            if (formEl) {
+                formEl.reset();
+                // Remove classes de validação
+                const invalidFields = formEl.querySelectorAll('.is-invalid, .is-valid');
+                invalidFields.forEach(field => {
+                    field.classList.remove('is-invalid', 'is-valid');
+                });
+                // Remove mensagens de erro
+                const feedbacks = formEl.querySelectorAll('.invalid-feedback, .valid-feedback');
+                feedbacks.forEach(feedback => feedback.remove());
+            }
+        } catch (error) {
+            console.error('Erro ao limpar formulário:', error);
         }
     },
     
@@ -406,12 +525,39 @@ SistemaTarefas.dom = {
      * @param {boolean} smooth - Rolagem suave
      */
     scrollTo: function(element, smooth = true) {
-        const el = typeof element === 'string' ? this.$(element) : element;
-        if (el) {
-            el.scrollIntoView({
-                behavior: smooth ? 'smooth' : 'auto',
-                block: 'start'
-            });
+        try {
+            const el = typeof element === 'string' ? this.$(element) : element;
+            if (el) {
+                el.scrollIntoView({
+                    behavior: smooth ? 'smooth' : 'auto',
+                    block: 'start'
+                });
+            }
+        } catch (error) {
+            console.error('Erro ao rolar para elemento:', error);
+        }
+    },
+    
+    /**
+     * Verifica se um elemento está visível na viewport
+     * @param {Element|string} element - Elemento ou seletor
+     * @returns {boolean} True se visível
+     */
+    isVisible: function(element) {
+        try {
+            const el = typeof element === 'string' ? this.$(element) : element;
+            if (!el) return false;
+            
+            const rect = el.getBoundingClientRect();
+            return (
+                rect.top >= 0 &&
+                rect.left >= 0 &&
+                rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+                rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+            );
+        } catch (error) {
+            console.error('Erro ao verificar visibilidade:', error);
+            return false;
         }
     }
 };

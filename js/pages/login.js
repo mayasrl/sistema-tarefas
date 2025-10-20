@@ -13,11 +13,20 @@
 
 // Namespace para a página de login
 SistemaTarefas.LoginPage = {
+    // Flag para evitar inicialização duplicada
+    initialized: false,
+    
     /**
      * Inicializa a página de login
      */
     init: function() {
-        console.log('Página de login inicializada');
+        // Evita inicialização duplicada
+        if (this.initialized) {
+            console.log('Página de login já inicializada');
+            return;
+        }
+        
+        console.log('Inicializando página de login');
         
         // Redireciona se já estiver logado
         SistemaTarefas.auth.redirectIfAuthenticated();
@@ -33,6 +42,8 @@ SistemaTarefas.LoginPage = {
         if (emailField) {
             emailField.focus();
         }
+        
+        this.initialized = true;
     },
     
     /**
@@ -40,7 +51,7 @@ SistemaTarefas.LoginPage = {
      */
     setupEventListeners: function() {
         // Event listener para o formulário de login
-        const loginForm = SistemaTarefas.dom.$('#loginForm, form');
+        const loginForm = SistemaTarefas.dom.$('#loginForm');
         if (loginForm) {
             SistemaTarefas.dom.on(loginForm, 'submit', (e) => {
                 e.preventDefault();
@@ -48,40 +59,28 @@ SistemaTarefas.LoginPage = {
             });
             
             // Validação em tempo real
-            SistemaTarefas.validation.setupRealTimeValidation(loginForm, SistemaTarefas.validation.loginForm);
+            SistemaTarefas.validation.setupRealTimeValidation(
+                loginForm, 
+                SistemaTarefas.validation.loginForm
+            );
         }
         
-        // Event listener para o link de cadastro
-        const cadastroLink = SistemaTarefas.dom.$('a[href="cadastro.html"], .cadastro-link');
-        if (cadastroLink) {
-            SistemaTarefas.dom.on(cadastroLink, 'click', (e) => {
-                e.preventDefault();
-                window.location.href = SistemaTarefas.config.PAGES.CADASTRO;
-            });
-        }
+        // Event listener para Enter nos campos
+        const emailField = SistemaTarefas.dom.$('#email');
+        const passwordField = SistemaTarefas.dom.$('#senha, #password');
         
-        // Event listener para mostrar/ocultar senha
-        const togglePasswordBtn = SistemaTarefas.dom.$('.toggle-password');
-        if (togglePasswordBtn) {
-            SistemaTarefas.dom.on(togglePasswordBtn, 'click', this.togglePasswordVisibility);
-        }
-        
-        // Event listeners para campos de entrada
-        const emailField = SistemaTarefas.dom.$('#email, input[type="email"]');
-        const passwordField = SistemaTarefas.dom.$('#senha, #password, input[type="password"]');
-        
-        if (emailField) {
+        if (emailField && passwordField) {
             SistemaTarefas.dom.on(emailField, 'keypress', (e) => {
-                if (e.key === 'Enter' && passwordField) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
                     passwordField.focus();
                 }
             });
-        }
-        
-        if (passwordField) {
+            
             SistemaTarefas.dom.on(passwordField, 'keypress', (e) => {
                 if (e.key === 'Enter') {
-                    const submitBtn = SistemaTarefas.dom.$('button[type="submit"], .btn-login');
+                    e.preventDefault();
+                    const submitBtn = SistemaTarefas.dom.$('button[type="submit"]', loginForm);
                     if (submitBtn) {
                         submitBtn.click();
                     }
@@ -111,20 +110,20 @@ SistemaTarefas.LoginPage = {
         const validation = SistemaTarefas.validation.loginForm(loginData);
         
         if (!validation.isValid) {
-            SistemaTarefas.validation.displayErrors(validation.errors);
+            SistemaTarefas.validation.displayErrors(validation.errors, '#loginForm');
             return;
         }
         
         // Limpa erros anteriores
-        SistemaTarefas.validation.clearErrors();
+        SistemaTarefas.validation.clearErrors('#loginForm');
         
         // Mostra loading no botão
         this.setButtonLoading(submitBtn, true);
         
-        // Simula delay de autenticação (em um sistema real seria uma requisição)
+        // Simula delay de autenticação
         setTimeout(() => {
             this.authenticateUser(loginData, submitBtn);
-        }, 1000);
+        }, 800);
     },
     
     /**
@@ -135,7 +134,7 @@ SistemaTarefas.LoginPage = {
     authenticateUser: function(loginData, submitBtn) {
         try {
             // Obtém usuários cadastrados
-            const users = this.getRegisteredUsers();
+            const users = SistemaTarefas.storage.getRegisteredUsers();
             
             // Busca usuário por email
             const user = users.find(u => u.email.toLowerCase() === loginData.email.toLowerCase());
@@ -146,8 +145,12 @@ SistemaTarefas.LoginPage = {
                 return;
             }
             
-            // Verifica senha (em um sistema real seria hash)
-            if (user.password !== loginData.password) {
+            // Verifica senha
+            // Suporta tanto senhas em texto plano (legado) quanto hasheadas
+            const passwordMatch = user.password === loginData.password || 
+                                  user.passwordHash === SistemaTarefas.utils.simpleHash(loginData.password);
+            
+            if (!passwordMatch) {
                 this.setButtonLoading(submitBtn, false);
                 SistemaTarefas.notification.error('Senha incorreta. Tente novamente.');
                 return;
@@ -162,7 +165,11 @@ SistemaTarefas.LoginPage = {
             };
             
             // Salva sessão do usuário
-            SistemaTarefas.storage.saveUser(userData);
+            if (!SistemaTarefas.storage.saveUser(userData)) {
+                this.setButtonLoading(submitBtn, false);
+                SistemaTarefas.notification.error('Erro ao salvar sessão. Tente novamente.');
+                return;
+            }
             
             // Mostra mensagem de sucesso
             SistemaTarefas.notification.success(`Bem-vindo(a), ${user.name}!`);
@@ -170,41 +177,12 @@ SistemaTarefas.LoginPage = {
             // Redireciona para o dashboard
             setTimeout(() => {
                 window.location.href = SistemaTarefas.config.PAGES.HOME;
-            }, 1500);
+            }, 1000);
             
         } catch (error) {
             console.error('Erro na autenticação:', error);
             this.setButtonLoading(submitBtn, false);
             SistemaTarefas.notification.error('Erro interno. Tente novamente.');
-        }
-    },
-    
-    /**
-     * Obtém lista de usuários cadastrados
-     * @returns {Array} Lista de usuários
-     */
-    getRegisteredUsers: function() {
-        return SistemaTarefas.storage.get('registered_users', []);
-    },
-    
-    /**
-     * Alterna visibilidade da senha
-     * @param {Event} event - Evento de clique
-     */
-    togglePasswordVisibility: function(event) {
-        const passwordField = SistemaTarefas.dom.$('#senha, #password, input[type="password"]');
-        const toggleBtn = event.target;
-        
-        if (passwordField) {
-            if (passwordField.type === 'password') {
-                passwordField.type = 'text';
-                toggleBtn.textContent = '🙈';
-                toggleBtn.title = 'Ocultar senha';
-            } else {
-                passwordField.type = 'password';
-                toggleBtn.textContent = '👁️';
-                toggleBtn.title = 'Mostrar senha';
-            }
         }
     },
     
@@ -218,11 +196,13 @@ SistemaTarefas.LoginPage = {
         
         if (loading) {
             button.disabled = true;
-            button.originalText = button.textContent;
+            button.setAttribute('data-original-text', button.innerHTML);
             button.innerHTML = '<span class="loading"></span> Entrando...';
         } else {
             button.disabled = false;
-            button.textContent = button.originalText || 'Entrar';
+            const originalText = button.getAttribute('data-original-text');
+            button.innerHTML = originalText || 'Entrar';
+            button.removeAttribute('data-original-text');
         }
     },
     
@@ -230,7 +210,7 @@ SistemaTarefas.LoginPage = {
      * Inicializa dados de demonstração
      */
     initDemoData: function() {
-        const users = this.getRegisteredUsers();
+        const users = SistemaTarefas.storage.getRegisteredUsers();
         
         // Se não há usuários, cria um usuário de demonstração
         if (users.length === 0) {
@@ -238,66 +218,28 @@ SistemaTarefas.LoginPage = {
                 id: SistemaTarefas.utils.generateId(),
                 name: 'Usuário Demo',
                 email: 'demo@sistema.com',
-                password: '123456',
+                password: '123456', // Mantém para compatibilidade
+                passwordHash: SistemaTarefas.utils.simpleHash('123456'),
                 createdAt: new Date().toISOString()
             };
             
-            SistemaTarefas.storage.save('registered_users', [demoUser]);
-            
-            // Mostra informações de login demo
-            this.showDemoInfo();
+            SistemaTarefas.storage.saveRegisteredUsers([demoUser]);
+            console.log('Usuário demo criado');
         }
-    },
-    
-    /**
-     * Mostra informações de login de demonstração
-     */
-    showDemoInfo: function() {
-        // Cria elemento de informação demo
-        const demoInfo = SistemaTarefas.dom.createElement('div', {
-            className: 'alert alert-info demo-info',
-            style: 'margin-top: 20px; padding: 15px; background-color: #d1ecf1; border: 1px solid #bee5eb; border-radius: 5px; color: #0c5460;'
-        }, `
-            <h6><strong>🎯 Sistema de Demonstração</strong></h6>
-            <p style="margin: 10px 0 5px 0;"><strong>Use estas credenciais para testar:</strong></p>
-            <p style="margin: 0;"><strong>Email:</strong> demo@sistema.com</p>
-            <p style="margin: 0;"><strong>Senha:</strong> 123456</p>
-            <small style="opacity: 0.8;">Ou cadastre-se para criar sua própria conta.</small>
-        `);
-        
-        // Adiciona após o formulário
-        const form = SistemaTarefas.dom.$('form');
-        if (form && form.parentNode) {
-            form.parentNode.insertBefore(demoInfo, form.nextSibling);
-        }
-    },
-    
-    /**
-     * Preenche campos com dados de demonstração
-     */
-    fillDemoData: function() {
-        const emailField = SistemaTarefas.dom.$('#email, input[type="email"]');
-        const passwordField = SistemaTarefas.dom.$('#senha, #password, input[type="password"]');
-        
-        if (emailField) SistemaTarefas.dom.val(emailField, 'demo@sistema.com');
-        if (passwordField) SistemaTarefas.dom.val(passwordField, '123456');
     }
 };
 
 // Inicializa a página quando o DOM estiver carregado
 document.addEventListener('DOMContentLoaded', function() {
     // Verifica se estamos na página de login
-    if (document.body.classList.contains('login-page') || 
-        document.title.toLowerCase().includes('login') ||
-        window.location.pathname.includes('index.html') ||
-        window.location.pathname === '/') {
-        
+    const isLoginPage = document.body.classList.contains('login-page') || 
+                        document.title.toLowerCase().includes('login') ||
+                        window.location.pathname.includes('index.html') ||
+                        window.location.pathname === '/' ||
+                        window.location.pathname.endsWith('/');
+    
+    if (isLoginPage) {
         SistemaTarefas.LoginPage.init();
     }
 });
-
-// Adiciona função global para preencher dados demo (pode ser chamada por um botão)
-window.preencherDemo = function() {
-    SistemaTarefas.LoginPage.fillDemoData();
-};
 

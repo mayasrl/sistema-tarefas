@@ -1,0 +1,53 @@
+/**
+ * ESTILOS DA PÁGINA HOME/DASHBOARD
+ */
+
+body.home-page {
+    background-color: #f8f9fa;
+    padding-bottom: 80px;
+}
+
+/* Cards de estatísticas */
+.home-page .stat-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.home-page .stat-card.success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.home-page .stat-card.warning {
+    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+}
+
+.home-page .stat-card.danger {
+    background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);
+}
+
+/* Itens de tarefa no dashboard */
+.home-page .task-item {
+    background: white;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.home-page .task-item:hover {
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Itens de lista no dashboard */
+.home-page .list-item {
+    background: white;
+    transition: all 0.3s ease;
+}
+
+.home-page .list-item:hover {
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Footer específico do dashboard */
+.home-page .wrapper-footer {
+    background: #343a40;
+}
+

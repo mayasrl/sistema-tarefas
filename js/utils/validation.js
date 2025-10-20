@@ -17,10 +17,10 @@ SistemaTarefas.validation = {
      * Valida se um campo não está vazio
      * @param {string} value - Valor a ser validado
      * @param {string} fieldName - Nome do campo para mensagem de erro
-     * @returns {Object} Resultado da validação
+     * @returns {Object} Resultado da validação {isValid, message}
      */
     required: function(value, fieldName = 'Campo') {
-        const isValid = value && value.trim().length > 0;
+        const isValid = value !== null && value !== undefined && String(value).trim().length > 0;
         return {
             isValid,
             message: isValid ? '' : `${fieldName} é obrigatório`
@@ -28,16 +28,22 @@ SistemaTarefas.validation = {
     },
     
     /**
-     * Valida formato de email
+     * Valida formato de email (RFC 5322 simplificado)
      * @param {string} email - Email a ser validado
      * @returns {Object} Resultado da validação
      */
     email: function(email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!email) {
+            return { isValid: false, message: 'Email é obrigatório' };
+        }
+        
+        // Regex mais robusto para email
+        const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
         const isValid = emailRegex.test(email);
+        
         return {
             isValid,
-            message: isValid ? '' : 'Email deve ter um formato válido'
+            message: isValid ? '' : 'Email deve ter um formato válido (exemplo@dominio.com)'
         };
     },
     
@@ -49,7 +55,14 @@ SistemaTarefas.validation = {
      * @returns {Object} Resultado da validação
      */
     minLength: function(value, minLength, fieldName = 'Campo') {
-        const isValid = value && value.length >= minLength;
+        if (!value) {
+            return {
+                isValid: false,
+                message: `${fieldName} é obrigatório`
+            };
+        }
+        
+        const isValid = value.length >= minLength;
         return {
             isValid,
             message: isValid ? '' : `${fieldName} deve ter pelo menos ${minLength} caracteres`
@@ -64,7 +77,9 @@ SistemaTarefas.validation = {
      * @returns {Object} Resultado da validação
      */
     maxLength: function(value, maxLength, fieldName = 'Campo') {
-        const isValid = !value || value.length <= maxLength;
+        if (!value) return { isValid: true, message: '' };
+        
+        const isValid = value.length <= maxLength;
         return {
             isValid,
             message: isValid ? '' : `${fieldName} deve ter no máximo ${maxLength} caracteres`
@@ -72,7 +87,7 @@ SistemaTarefas.validation = {
     },
     
     /**
-     * Valida senha com critérios específicos
+     * Valida senha com critérios de segurança
      * @param {string} password - Senha a ser validada
      * @returns {Object} Resultado da validação
      */
@@ -84,10 +99,21 @@ SistemaTarefas.validation = {
             };
         }
         
-        if (password.length < 6) {
+        const minLength = SistemaTarefas.config.LIMITS.MIN_PASSWORD_LENGTH;
+        
+        if (password.length < minLength) {
             return {
                 isValid: false,
-                message: 'Senha deve ter pelo menos 6 caracteres'
+                message: `Senha deve ter pelo menos ${minLength} caracteres`
+            };
+        }
+        
+        // Validação adicional: não permitir senhas muito simples
+        const weakPasswords = ['123456', 'password', 'senha123', 'abc123'];
+        if (weakPasswords.includes(password.toLowerCase())) {
+            return {
+                isValid: false,
+                message: 'Senha muito fraca. Escolha uma senha mais segura'
             };
         }
         
@@ -104,17 +130,66 @@ SistemaTarefas.validation = {
      * @returns {Object} Resultado da validação
      */
     passwordConfirmation: function(password, confirmPassword) {
+        if (!confirmPassword) {
+            return {
+                isValid: false,
+                message: 'Confirmação de senha é obrigatória'
+            };
+        }
+        
         const isValid = password === confirmPassword;
         return {
             isValid,
-            message: isValid ? '' : 'Senhas não coincidem'
+            message: isValid ? '' : 'As senhas não coincidem'
         };
+    },
+    
+    /**
+     * Valida data de vencimento (corrigido)
+     * @param {string|Date} date - Data a ser validada
+     * @returns {Object} Resultado da validação
+     */
+    dueDate: function(date) {
+        if (!date) {
+            return { isValid: true, message: '' }; // Data é opcional
+        }
+        
+        try {
+            const inputDate = new Date(date);
+            
+            // Verifica se é uma data válida
+            if (isNaN(inputDate.getTime())) {
+                return {
+                    isValid: false,
+                    message: 'Data de vencimento inválida'
+                };
+            }
+            
+            // Verifica se não é uma data passada
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            inputDate.setHours(0, 0, 0, 0);
+            
+            if (inputDate < today) {
+                return {
+                    isValid: false,
+                    message: 'Data de vencimento não pode ser anterior a hoje'
+                };
+            }
+            
+            return { isValid: true, message: '' };
+        } catch (error) {
+            return {
+                isValid: false,
+                message: 'Data de vencimento inválida'
+            };
+        }
     },
     
     /**
      * Valida dados de login
      * @param {Object} data - Dados do formulário de login
-     * @returns {Object} Resultado da validação
+     * @returns {Object} Resultado da validação {isValid, errors}
      */
     loginForm: function(data) {
         const errors = {};
@@ -140,16 +215,13 @@ SistemaTarefas.validation = {
             isValid = false;
         }
         
-        return {
-            isValid,
-            errors
-        };
+        return { isValid, errors };
     },
     
     /**
      * Valida dados de cadastro
      * @param {Object} data - Dados do formulário de cadastro
-     * @returns {Object} Resultado da validação
+     * @returns {Object} Resultado da validação {isValid, errors}
      */
     registerForm: function(data) {
         const errors = {};
@@ -161,7 +233,8 @@ SistemaTarefas.validation = {
             errors.name = nameValidation.message;
             isValid = false;
         } else {
-            const nameMinLength = this.minLength(data.name, 2, 'Nome');
+            const minLength = SistemaTarefas.config.LIMITS.MIN_NAME_LENGTH;
+            const nameMinLength = this.minLength(data.name, minLength, 'Nome');
             if (!nameMinLength.isValid) {
                 errors.name = nameMinLength.message;
                 isValid = false;
@@ -197,20 +270,18 @@ SistemaTarefas.validation = {
             }
         }
         
-        return {
-            isValid,
-            errors
-        };
+        return { isValid, errors };
     },
     
     /**
      * Valida dados de tarefa
      * @param {Object} data - Dados da tarefa
-     * @returns {Object} Resultado da validação
+     * @returns {Object} Resultado da validação {isValid, errors}
      */
     taskForm: function(data) {
         const errors = {};
         let isValid = true;
+        const config = SistemaTarefas.config;
         
         // Validação do título
         const titleValidation = this.required(data.title, 'Título');
@@ -218,7 +289,7 @@ SistemaTarefas.validation = {
             errors.title = titleValidation.message;
             isValid = false;
         } else {
-            const titleMaxLength = this.maxLength(data.title, 100, 'Título');
+            const titleMaxLength = this.maxLength(data.title, config.LIMITS.MAX_TITLE_LENGTH, 'Título');
             if (!titleMaxLength.isValid) {
                 errors.title = titleMaxLength.message;
                 isValid = false;
@@ -227,7 +298,11 @@ SistemaTarefas.validation = {
         
         // Validação da descrição (opcional, mas com limite)
         if (data.description) {
-            const descriptionMaxLength = this.maxLength(data.description, 500, 'Descrição');
+            const descriptionMaxLength = this.maxLength(
+                data.description, 
+                config.LIMITS.MAX_DESCRIPTION_LENGTH, 
+                'Descrição'
+            );
             if (!descriptionMaxLength.isValid) {
                 errors.description = descriptionMaxLength.message;
                 isValid = false;
@@ -235,46 +310,38 @@ SistemaTarefas.validation = {
         }
         
         // Validação do status
-        if (data.status && !Object.values(SistemaTarefas.config.TASK_STATUS).includes(data.status)) {
+        if (data.status && !Object.values(config.TASK_STATUS).includes(data.status)) {
             errors.status = 'Status inválido';
             isValid = false;
         }
         
         // Validação da prioridade
-        if (data.priority && !Object.values(SistemaTarefas.config.TASK_PRIORITY).includes(data.priority)) {
+        if (data.priority && !Object.values(config.TASK_PRIORITY).includes(data.priority)) {
             errors.priority = 'Prioridade inválida';
             isValid = false;
         }
         
-        // Validação da data de vencimento (se fornecida)
+        // Validação da data de vencimento (CORRIGIDO)
         if (data.dueDate) {
-            const dueDate = new Date(data.dueDate);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            if (isNaN(dueDate.getTime())) {
-                errors.dueDate = 'Data de vencimento inválida';
-                isValid = false;
-            } else if (dueDate < today) {
-                errors.dueDate = 'Data de vencimento não pode ser anterior a hoje';
+            const dueDateValidation = this.dueDate(data.dueDate);
+            if (!dueDateValidation.isValid) {
+                errors.dueDate = dueDateValidation.message;
                 isValid = false;
             }
         }
         
-        return {
-            isValid,
-            errors
-        };
+        return { isValid, errors };
     },
     
     /**
      * Valida dados de lista
      * @param {Object} data - Dados da lista
-     * @returns {Object} Resultado da validação
+     * @returns {Object} Resultado da validação {isValid, errors}
      */
     listForm: function(data) {
         const errors = {};
         let isValid = true;
+        const config = SistemaTarefas.config;
         
         // Validação do nome
         const nameValidation = this.required(data.name, 'Nome da lista');
@@ -282,7 +349,11 @@ SistemaTarefas.validation = {
             errors.name = nameValidation.message;
             isValid = false;
         } else {
-            const nameMaxLength = this.maxLength(data.name, 50, 'Nome da lista');
+            const nameMaxLength = this.maxLength(
+                data.name, 
+                config.LIMITS.MAX_LIST_NAME_LENGTH, 
+                'Nome da lista'
+            );
             if (!nameMaxLength.isValid) {
                 errors.name = nameMaxLength.message;
                 isValid = false;
@@ -291,17 +362,18 @@ SistemaTarefas.validation = {
         
         // Validação da descrição (opcional, mas com limite)
         if (data.description) {
-            const descriptionMaxLength = this.maxLength(data.description, 200, 'Descrição');
+            const descriptionMaxLength = this.maxLength(
+                data.description, 
+                config.LIMITS.MAX_LIST_DESCRIPTION_LENGTH, 
+                'Descrição'
+            );
             if (!descriptionMaxLength.isValid) {
                 errors.description = descriptionMaxLength.message;
                 isValid = false;
             }
         }
         
-        return {
-            isValid,
-            errors
-        };
+        return { isValid, errors };
     },
     
     /**
@@ -315,20 +387,31 @@ SistemaTarefas.validation = {
         
         // Adiciona novas mensagens de erro
         Object.keys(errors).forEach(fieldName => {
-            const field = document.querySelector(`${formSelector} [name="${fieldName}"]`);
+            const form = document.querySelector(formSelector);
+            if (!form) return;
+            
+            const field = form.querySelector(`[name="${fieldName}"]`);
             if (field) {
                 // Adiciona classe de erro ao campo
                 field.classList.add('is-invalid');
+                field.setAttribute('aria-invalid', 'true');
                 
                 // Cria elemento de mensagem de erro
                 const errorElement = document.createElement('div');
                 errorElement.className = 'invalid-feedback';
                 errorElement.textContent = errors[fieldName];
+                errorElement.setAttribute('role', 'alert');
                 
                 // Insere a mensagem após o campo
                 field.parentNode.appendChild(errorElement);
             }
         });
+        
+        // Foca no primeiro campo com erro
+        const firstInvalidField = document.querySelector(`${formSelector} .is-invalid`);
+        if (firstInvalidField) {
+            firstInvalidField.focus();
+        }
     },
     
     /**
@@ -341,7 +424,10 @@ SistemaTarefas.validation = {
         
         // Remove classes de erro
         const invalidFields = form.querySelectorAll('.is-invalid');
-        invalidFields.forEach(field => field.classList.remove('is-invalid'));
+        invalidFields.forEach(field => {
+            field.classList.remove('is-invalid');
+            field.removeAttribute('aria-invalid');
+        });
         
         // Remove mensagens de erro
         const errorMessages = form.querySelectorAll('.invalid-feedback');
@@ -354,9 +440,15 @@ SistemaTarefas.validation = {
      * @param {Function} validationFunction - Função de validação a ser usada
      */
     setupRealTimeValidation: function(form, validationFunction) {
+        if (!form || typeof validationFunction !== 'function') {
+            console.error('Formulário ou função de validação inválidos');
+            return;
+        }
+        
         const inputs = form.querySelectorAll('input, textarea, select');
         
         inputs.forEach(input => {
+            // Validação ao sair do campo (blur)
             input.addEventListener('blur', () => {
                 const formData = new FormData(form);
                 const data = Object.fromEntries(formData.entries());
@@ -366,10 +458,32 @@ SistemaTarefas.validation = {
                     // Mostra erro apenas para este campo
                     const fieldError = {};
                     fieldError[input.name] = validation.errors[input.name];
+                    
+                    // Remove erro anterior deste campo
+                    input.classList.remove('is-invalid');
+                    const existingError = input.parentNode.querySelector('.invalid-feedback');
+                    if (existingError) {
+                        existingError.remove();
+                    }
+                    
+                    // Adiciona novo erro
                     this.displayErrors(fieldError, `#${form.id}`);
                 } else {
                     // Remove erro deste campo se estiver válido
                     input.classList.remove('is-invalid');
+                    input.removeAttribute('aria-invalid');
+                    const errorMessage = input.parentNode.querySelector('.invalid-feedback');
+                    if (errorMessage) {
+                        errorMessage.remove();
+                    }
+                }
+            });
+            
+            // Limpa erro ao começar a digitar
+            input.addEventListener('input', () => {
+                if (input.classList.contains('is-invalid')) {
+                    input.classList.remove('is-invalid');
+                    input.removeAttribute('aria-invalid');
                     const errorMessage = input.parentNode.querySelector('.invalid-feedback');
                     if (errorMessage) {
                         errorMessage.remove();
