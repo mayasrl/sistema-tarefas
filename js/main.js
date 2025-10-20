@@ -1,14 +1,12 @@
 /**
- * SISTEMA DE TAREFAS - ARQUIVO PRINCIPAL
+ * SISTEMA DE TAREFAS - ARQUIVO PRINCIPAL REFATORADO
  * 
- * Este arquivo contém as funcionalidades globais que são utilizadas
- * em todas as páginas do sistema. Deve ser carregado primeiro.
- * 
- * Funcionalidades:
- * - Inicialização global
- * - Verificação de autenticação
- * - Utilitários globais
- * - Configurações gerais
+ * Melhorias implementadas:
+ * - Tratamento robusto de erros
+ * - Remoção de event listeners duplicados
+ * - Constantes centralizadas
+ * - Código mais limpo e organizado
+ * - Melhor separação de responsabilidades
  */
 
 // Namespace global da aplicação
@@ -369,11 +367,16 @@ SistemaTarefas.notification = {
         
         // Remove automaticamente após 5 segundos
         setTimeout(() => {
-            if (notification.parentElement) {
-                notification.remove();
-                if (this.currentNotification === notification) {
-                    this.currentNotification = null;
-                }
+            if (notification && notification.parentElement) {
+                notification.classList.add('notification-fade-out');
+                setTimeout(() => {
+                    if (notification.parentElement) {
+                        notification.remove();
+                    }
+                    if (this.currentNotification === notification) {
+                        this.currentNotification = null;
+                    }
+                }, 300);
             }
         }, 5000);
     }
@@ -477,6 +480,21 @@ SistemaTarefas.injectStyles = function() {
             to {
                 transform: translateX(0);
                 opacity: 1;
+            }
+        }
+        
+        .notification-fade-out {
+            animation: fadeOut 0.3s ease-out forwards;
+        }
+        
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100%);
             }
         }
         
